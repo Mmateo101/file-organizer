@@ -5,7 +5,7 @@ from pathlib import Path
 
 DOWNLOADS = Path(r"C:\Users\mateo\Downloads")
 RECENT_FOLDER = "Recent Downloads (this week)"
-RECENT_DAYS = 7
+RECENT_DAYS = 5
 
 CATEGORIES = {
     "Images":     {".jpg", ".jpeg", ".png", ".gif", ".webp"},
@@ -23,7 +23,7 @@ SKIP_RESCAN = {RECENT_FOLDER, "Trash"}
 
 
 def is_recent(file: Path) -> bool:
-    age_seconds = time.time() - file.stat().st_mtime
+    age_seconds = time.time() - file.stat().st_ctime
     return age_seconds < RECENT_DAYS * 86400
 
 
