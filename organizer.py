@@ -15,6 +15,10 @@ CATEGORIES = {
     "Compressed": {".zip", ".rar"},
 }
 
+# Subfolders to scan for mis-categorized files. Excludes RECENT_FOLDER and any
+# folders that should never be touched (e.g. Trash).
+SKIP_RESCAN = {RECENT_FOLDER, "Trash"}
+
 
 def is_recent(file: Path) -> bool:
     age_seconds = time.time() - file.stat().st_mtime
@@ -47,6 +51,17 @@ def build_plan() -> list[tuple[Path, Path]]:
             if entry.is_file() and not is_recent(entry):
                 dest_folder = DOWNLOADS / categorize(entry)
                 plan.append((entry, dest_folder / entry.name))
+
+    # Re-scan existing subfolders so mis-categorized files get corrected on
+    # future runs (e.g. after new categories are added).
+    for subfolder in DOWNLOADS.iterdir():
+        if not subfolder.is_dir() or subfolder.name in SKIP_RESCAN:
+            continue
+        for entry in subfolder.iterdir():
+            if entry.is_file():
+                dest_folder = DOWNLOADS / categorize(entry)
+                if entry.parent != dest_folder:
+                    plan.append((entry, dest_folder / entry.name))
 
     return sorted(plan, key=lambda t: (t[1].parent.name, t[0].name))
 
