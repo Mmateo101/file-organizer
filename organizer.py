@@ -1,3 +1,4 @@
+import argparse
 import shutil
 import time
 from pathlib import Path
@@ -13,6 +14,7 @@ CATEGORIES = {
     "Videos":     {".mp4", ".mov", ".avi"},
     "Audio":      {".mp3", ".wav"},
     "Compressed": {".zip", ".rar"},
+    "Code":       {".py", ".r", ".rmd", ".cpp", ".h", ".m"},
 }
 
 # Subfolders to scan for mis-categorized files. Excludes RECENT_FOLDER and any
@@ -102,21 +104,34 @@ def execute(plan: list[tuple[Path, Path]]) -> None:
 
 
 def main() -> None:
-    print(f"Scanning: {DOWNLOADS}\n")
+    parser = argparse.ArgumentParser(description="Organize the Downloads folder by file type.")
+    parser.add_argument(
+        "--silent",
+        action="store_true",
+        help="Skip preview and confirmation — organize immediately.",
+    )
+    args = parser.parse_args()
+
+    if not args.silent:
+        print(f"Scanning: {DOWNLOADS}\n")
+
     plan = build_plan()
 
     if not plan:
-        print("Nothing to organize — Downloads folder is already tidy.")
+        if not args.silent:
+            print("Nothing to organize — Downloads folder is already tidy.")
         return
 
-    print(f"Found {len(plan)} file(s) to move:\n")
-    preview(plan)
-
-    answer = input("Proceed? [y/N] ").strip().lower()
-    if answer == "y":
+    if args.silent:
         execute(plan)
     else:
-        print("Aborted — no files were moved.")
+        print(f"Found {len(plan)} file(s) to move:\n")
+        preview(plan)
+        answer = input("Proceed? [y/N] ").strip().lower()
+        if answer == "y":
+            execute(plan)
+        else:
+            print("Aborted — no files were moved.")
 
 
 if __name__ == "__main__":
