@@ -35,18 +35,25 @@ def categorize(file: Path) -> str:
     return "Other"
 
 
-def build_plan() -> list[tuple[Path, Path]]:
-    """Return a list of (source, destination) pairs for all files to move."""
+def build_plan(rescan_subfolders: bool = True) -> list[tuple[Path, Path]]:
+    """Return a list of (source, destination) pairs for all files to move.
+
+    rescan_subfolders=True  — also checks already-sorted folders for
+                              mis-categorized files (interactive mode).
+    rescan_subfolders=False — only processes loose files in the Downloads root
+                              and graduates aged-out files from Recent
+                              (silent/startup mode).
+    """
     plan = []
 
-    # Files sitting directly in Downloads
+    # Files sitting directly in Downloads root
     for entry in DOWNLOADS.iterdir():
         if entry.is_file():
             dest_folder = DOWNLOADS / (RECENT_FOLDER if is_recent(entry) else categorize(entry))
             if entry.parent != dest_folder:
                 plan.append((entry, dest_folder / entry.name))
 
-    # Files in the Recent folder that have aged out — graduate them to their type folder
+    # Files in Recent that have aged out — graduate them to their type folder
     recent_dir = DOWNLOADS / RECENT_FOLDER
     if recent_dir.is_dir():
         for entry in recent_dir.iterdir():
@@ -54,16 +61,17 @@ def build_plan() -> list[tuple[Path, Path]]:
                 dest_folder = DOWNLOADS / categorize(entry)
                 plan.append((entry, dest_folder / entry.name))
 
-    # Re-scan existing subfolders so mis-categorized files get corrected on
-    # future runs (e.g. after new categories are added).
-    for subfolder in DOWNLOADS.iterdir():
-        if not subfolder.is_dir() or subfolder.name in SKIP_RESCAN:
-            continue
-        for entry in subfolder.iterdir():
-            if entry.is_file():
-                dest_folder = DOWNLOADS / categorize(entry)
-                if entry.parent != dest_folder:
-                    plan.append((entry, dest_folder / entry.name))
+    # Interactive only: re-scan existing subfolders so mis-categorized files
+    # get corrected when new categories are added.
+    if rescan_subfolders:
+        for subfolder in DOWNLOADS.iterdir():
+            if not subfolder.is_dir() or subfolder.name in SKIP_RESCAN:
+                continue
+            for entry in subfolder.iterdir():
+                if entry.is_file():
+                    dest_folder = DOWNLOADS / categorize(entry)
+                    if entry.parent != dest_folder:
+                        plan.append((entry, dest_folder / entry.name))
 
     return sorted(plan, key=lambda t: (t[1].parent.name, t[0].name))
 
@@ -115,7 +123,7 @@ def main() -> None:
     if not args.silent:
         print(f"Scanning: {DOWNLOADS}\n")
 
-    plan = build_plan()
+    plan = build_plan(rescan_subfolders=not args.silent)
 
     if not plan:
         if not args.silent:
